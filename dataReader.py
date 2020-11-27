@@ -2,10 +2,10 @@ import csv
 
 class Driver:
     def __init__(self,id, fName, lName,age, city,state):
-        self.id = id
+        self.id = int(id)
         self.firstName = fName
         self.lastName = lName
-        self.age = age
+        self.age = int(age)
         self.city = city
         self.state = state
 
@@ -14,7 +14,7 @@ class Driver:
 
 class Assignment:
     def __init__(self, id, route, weekDay):
-        self.id = id
+        self.id = int(id)
         self.route = route
         self.weekDay = weekDay
     
@@ -23,16 +23,16 @@ class Assignment:
 
 class Route:
     def __init__(self, rNumber, rName, depCity, depCityCode, destCity, destCode, rType, depTimeHours, depTimeMin, tTimeHours, tTimeMin):
-        self.routeNumber = rNumber
+        self.routeNumber = int(rNumber)
         self.routeName = rName
         self.departureCity = depCity
         self.departureCode = depCityCode
         self.desinationCode = destCode
         self.routeType = rType
-        self.departureHour = depTimeHours
-        self.departureMin = depTimeMin
-        self.travelTimeHour = tTimeHours
-        self.travelTimeMin = tTimeMin
+        self.departureHour = int(depTimeHours)
+        self.departureMin = int(depTimeMin)
+        self.travelTimeHour = int(tTimeHours)
+        self.travelTimeMin = int(tTimeMin)
         self.totalDepartueTime = 60*int(depTimeHours) + int(depTimeMin)
         self.totalTime = int(tTimeHours) * 60 + int(tTimeMin)
     
