@@ -52,7 +52,7 @@
             </div>
             <div id="driver" class="col s12"><br><br>
               <div class="row">
-                <form action="{{ url_for('main.driver_lookup')}}" method="POST" class="col s12">
+                <form name="dr" action="{{ url_for('main.driver_lookup')}}" method="POST" class="col s12">
                   <div class="row">
                     <div class="input-field col s6">
                       <input name="driver_fn" id="icon_fn" type="text" class="validate">
@@ -63,9 +63,10 @@
                       <label for="icon_ln">Last Name</label>
                     </div>
                   </div>
-                  <button class="btn waves-effect orange darken-1" type="submit" onclick="myfunc()" >Submit
+                  <button id=process_driver class="btn waves-effect orange darken-1" type="submit" onclick="myfunc()" >Submit
                     <i class="material-icons right">send</i>
                   </button>
+                  
                 </form>
               </div>
             </div>
@@ -143,13 +144,13 @@
                     <div class="input-field col s4">
                       <select name="route_exist_day_day">
                         <option value="" disabled selected></option>
-                        <option value="1">Sunday</option>
-                        <option value="2">Monday</option>
-                        <option value="3">Tuesday</option>
-                        <option value="4">Wednesday</option>
-                        <option value="5">Thursday</option>
-                        <option value="6">Friday</option>
-                        <option value="7">Saturday</option>
+                        <option value="s">Sunday</option>
+                        <option value="M">Monday</option>
+                        <option value="T">Tuesday</option>
+                        <option value="W">Wednesday</option>
+                        <option value="U">Thursday</option>
+                        <option value="F">Friday</option>
+                        <option value="S">Saturday</option>
                       </select>
                       <label>Day of the week</label>
                     </div>
@@ -210,6 +211,7 @@
   });
   function myFunc() {
     instance.select('driver');
+    
                     }
   function myFunc1() {
     instance.select('city');
