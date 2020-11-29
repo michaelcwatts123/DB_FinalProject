@@ -12,7 +12,8 @@ from json2html import *
 
 
 app = Flask(__name__)
-app.config["MONGO_URI"] = 'mongodb+srv://admin:FyJKue16fzF5et8v@cluster0.bbd6r.mongodb.net/BusNetwork?retryWrites=true&w=majority'
+#app.config["MONGO_URI"] = 'mongodb+srv://admin:FyJKue16fzF5et8v@cluster0.bbd6r.mongodb.net/BusNetwork?retryWrites=true&w=majority'
+app.config["MONGO_URI"] = 'mongodb+srv://project_user:7330@busnetwork.nwlcz.mongodb.net/BusNetwork?retryWrites=true&w=majority'
 mongo = PyMongo(app)
 app.config["FILE_UPLOADS1"] = './BusNetwork/static/uploads/driver'
 app.config["FILE_UPLOADS2"] = './BusNetwork/static/uploads/routes'
@@ -105,7 +106,7 @@ def upload_docs():
                 elif fil.filename == 'Assignment.csv' or fil.filename == 'Assignment.xlsx':
                     fil.save(os.path.join(app.config["FILE_UPLOADS3"], fil.filename))
                     with open(fil.filename, 'r', encoding = "utf-8") as f:
-                        for line in open("Assignment.xlsx", encoding = "utf-8",errors='ignore'):
+                        for line in open("Assignment.csv", encoding = "utf-8",errors='ignore'):
                             #data = f.read()
                             csv_row=[row for row in csv.reader(f.read().splitlines())]
                             for csv_row in csv_row:
@@ -117,6 +118,7 @@ def upload_docs():
                                     Assignment.save(z)
                                 else:
                                     print("Driver Assignment not possible")
+                                    continue
 
             return redirect(request.url)
     return render_template("index.html")
