@@ -23,6 +23,46 @@ main = Blueprint('main', __name__)
 def index():
     return render_template('index.html')
 
+def validate_assignment(obj):
+    # Define Rest time between journeys.
+    if not obj:
+        print("No Assignment object to validate")
+        return False
+    else:
+        route_assignment = Assignment.objects(driver_id=obj.driver_id)
+        # Check constraints 1 & 2 for driver assignment
+        for r in route_assignment:
+            if r.weekDay == obj.weekDay:
+                existing_route = Route.objects.get(routeNumber = r.routeNumber.id)
+                potential_route = Route.objects.get(routeNumber = obj.routeNumber.id)
+                rest_time = (existing_route.travelTimeHour*60 + existing_route.travelTimeMin)/2
+                potential_departure = potential_route.departureHour*60 + potential_route.departureMin
+                print(potential_departure)
+                potential_arrival = potential_departure + potential_route.travelTimeHour*60 + potential_route.travelTimeMin
+                print(potential_arrival)
+                existing_departure = existing_route.departureHour*60 + existing_route.departureMin
+                print(existing_departure)
+                existing_arrival = existing_departure + existing_route.travelTimeHour*60 + existing_route.travelTimeMin
+                print(existing_arrival)
+                if potential_departure >= existing_departure and potential_departure <= existing_arrival:
+                    print("Another route assignment exists in this time frame. Driver not available")
+                    return False
+                elif potential_departure < existing_departure and potential_arrival >= existing_departure:
+                    print("Route assignment interferes with another departure.  Driver cannot be assigned this route")
+                    return False
+                elif potential_departure < existing_departure and potential_arrival <= existing_departure - rest_time:
+                    print("Route assignment successful")
+                    return True
+                elif potential_departure >= existing_departure + rest_time:
+                    print("Route assignment successful")
+                    return True
+            else:
+                print("New day no issues")
+                return True
+            
+    return True
+
+
 
 @main.route("/upload-docs", methods=["GET", "POST"])
 def upload_docs():
@@ -72,7 +112,11 @@ def upload_docs():
                                 z=Assignment(driver_id=csv_row[0],routeNumber=csv_row[1],weekDay=csv_row[2])
                                 print(z.weekDay)
                                 #driver_collection.insert(json.dumps(x))
-                                Assignment.save(z)
+                                if validate_assignment(z):
+                                    print("Driver Assignment Validated")
+                                    Assignment.save(z)
+                                else:
+                                    print("Driver Assignment not possible")
 
             return redirect(request.url)
     return render_template("index.html")
