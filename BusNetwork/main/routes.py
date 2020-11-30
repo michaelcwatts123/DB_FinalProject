@@ -344,6 +344,8 @@ def validate():
 #        pprint.pprint(vals)
     pprint.pprint(assignmentsToRemove)
 #    if(len(assignmentsToRemove) > 0):
+#        for i in assignmentsToRemove:
+#            Assignment.objects.filter(driver_id=i[0],routeNumber=i[1], weekDay=i[2]).delete()
 #        validate()
     return render_template('base.html', data=assignmentsToRemove)
     
