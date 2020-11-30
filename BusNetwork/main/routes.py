@@ -29,7 +29,7 @@ def validate_driver(obj):
         print("No driver object to be validated")
         return False
     else:
-        route_set = Routes.objects(destinationCity=obj.city)
+        route_set = Route.objects(destinationCity=obj.city)
         if not route_set:
             print("No routes with the destination city as the Driver's hometown")
             return False
