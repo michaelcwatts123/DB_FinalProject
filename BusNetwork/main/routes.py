@@ -24,44 +24,99 @@ main = Blueprint('main', __name__)
 def index():
     return render_template('index.html')
 
+def validate_driver(obj):
+    if not obj:
+        print("No driver object to be validated")
+        return False
+    else:
+        route_set = Routes.objects(destinationCity=obj.city)
+        if not route_set:
+            print("No routes with the destination city as the Driver's hometown")
+            return False
+        else:
+            print("Driver can be hired")
+            return True
+
+
+
 def validate_assignment(obj):
-    # Define Rest time between journeys.
     if not obj:
         print("No Assignment object to validate")
         return False
     else:
+        check_driver_dest = False
+        day = ('s', 'M', 'T', 'W', 'U', 'F', 'S')
         route_assignment = Assignment.objects(driver_id=obj.driver_id)
         # Check constraints 1 & 2 for driver assignment
+        if not route_assignment:
+            print("No previous routes assigned.  Proceed with assignment")
+            return True
         for r in route_assignment:
-            if r.weekDay == obj.weekDay:
-                existing_route = Route.objects.get(routeNumber = r.routeNumber.id)
-                potential_route = Route.objects.get(routeNumber = obj.routeNumber.id)
-                rest_time = (existing_route.travelTimeHour*60 + existing_route.travelTimeMin)/2
-                potential_departure = potential_route.departureHour*60 + potential_route.departureMin
-                print(potential_departure)
-                potential_arrival = potential_departure + potential_route.travelTimeHour*60 + potential_route.travelTimeMin
-                print(potential_arrival)
-                existing_departure = existing_route.departureHour*60 + existing_route.departureMin
-                print(existing_departure)
-                existing_arrival = existing_departure + existing_route.travelTimeHour*60 + existing_route.travelTimeMin
-                print(existing_arrival)
-                if potential_departure >= existing_departure and potential_departure <= existing_arrival:
-                    print("Another route assignment exists in this time frame. Driver not available")
-                    return False
-                elif potential_departure < existing_departure and potential_arrival >= existing_departure:
-                    print("Route assignment interferes with another departure.  Driver cannot be assigned this route")
-                    return False
-                elif potential_departure < existing_departure and potential_arrival <= existing_departure - rest_time:
-                    print("Route assignment successful")
-                    return True
-                elif potential_departure >= existing_departure + rest_time:
-                    print("Route assignment successful")
-                    return True
-            else:
-                print("New day no issues")
+            existing_route = Route.objects.get(routeNumber = r.routeNumber.id)
+            potential_route = Route.objects.get(routeNumber = obj.routeNumber.id)
+            existing_driver_detail = Driver.objects.get(id = r.driver_id.id)
+            potential_driver_detail = Driver.objects.get(id = obj.driver_id.id)
+            rest_time = (existing_route.travelTimeHour*60 + existing_route.travelTimeMin)/2
+            potential_departure = potential_route.departureHour*60 + potential_route.departureMin
+            potential_arrival = potential_departure + potential_route.travelTimeHour*60 + potential_route.travelTimeMin
+            potential_rest = (potential_route.travelTimeHour*60 + potential_route.travelTimeMin)/2  
+            existing_departure = existing_route.departureHour*60 + existing_route.departureMin     
+            existing_arrival = existing_departure + existing_route.travelTimeHour*60 + existing_route.travelTimeMin  
+            if potential_driver_detail.city == potential_route.destinationCity:
+                potential_rest = max(potential_rest, 18*60)
+            if existing_route.destinationCity == potential_driver_detail.city:
+                rest_time = max(rest_time, 18*60)
+            old_route_end_day = day.index(r.weekDay)
+            old_route_end_total = existing_route.departureHour*60 + existing_route.departureMin + existing_route.travelTimeHour*60 + existing_route.travelTimeMin + rest_time
+            if old_route_end_total >= 1440:
+                old_route_end_time = old_route_end_total % 1440 
+                old_route_end_day += old_route_end_total//1440
+            if old_route_end_day < day.index(obj.weekDay):
+                print("No issues with this route")
+                print(r.to_json())
                 return True
+            elif old_route_end_day == day.index(obj.weekDay):
+                if potential_departure <= existing_arrival + rest_time:
+                    print("Route cannot be assigned before existing route ends")
+                    return False
+                print("Route assignment without collision possible")
+                return True
+            elif old_route_end_day > day.index(obj.weekDay):
+                print ("New route cannot be assigned before old route assignment ends")
+                return False
+            elif day.index(r.weekDay) > day.index(obj.weekDay):
+                potential_route_end_total = potential_arrival + potential_rest
+                if potential_route_end_total >= 1440:
+                    potential_route_end_time = potential_route_end_total%1440
+                    potential_route_end_day = day.index(r.weekDay) + potential_route_end_total//1440
+                if potential_route_end_day == day.index(r.weekDay):
+                    if potential_route_end_time >= existing_departure:
+                        print("The new assignment will not end before the departure of an existing route")
+                        return False
+                print("New route can be assigned without any collision")
+                return True
+
+def check_driver_hometown_assigned():
+    deleted_drivers = []
+    for drivers in Driver.objects:
+        if not drivers:
+            print("No drivers in record")
+            exit
+        check_dest = False
+        route_assignments = Assignment.objects(driver_id=drivers.id)
+        if not route_assignments:
+            print("No route assignments for the particular driver")
+            exit
+        for route in route_assignments:
+            assigned_route = Route.objects.get(routeNumber=route.routeNumber.id)
+            if assigned_route.destinationCity == drivers.city:
+                check_dest = True
             
-    return True
+        if not check_dest:
+            deleted_drivers.append(drivers.id)
+            Assignment.objects(driver_id=drivers.id).delete()
+            drivers.delete()
+    return deleted_drivers
 
 
 
@@ -89,7 +144,12 @@ def upload_docs():
                                 x=Driver(id=csv_row[0],firstName=csv_row[1],lastName=csv_row[2],age =csv_row[3],city =csv_row[4],state =csv_row[5])
                                 print(x.id)
                                 #driver_collection.insert(json.dumps(x))
-                                Driver.save(x)
+                                if validate_driver(x):
+                                    print("Driver validated")
+                                    Driver.save(x)
+                                else:
+                                    print("Driver cannot be hired")
+                                    continue
                         #driver_collection.save(Driver())
                     
                 elif fil.filename == 'Routes.csv':
@@ -119,7 +179,9 @@ def upload_docs():
                                 else:
                                     print("Driver Assignment not possible")
                                     continue
-
+                    deleted_driver_list = check_driver_hometown_assigned()
+                    print("Following drivers are deleted for not getting assigned a destination route")
+                    print(deleted_driver_list)
             return redirect(request.url)
     return render_template("index.html")
 
