@@ -8,7 +8,7 @@ from .models import Driver, Assignment, Route
 from flask_mongoengine import MongoEngine
 from mongoengine.queryset.visitor import Q
 from json2html import *
-import pprint
+
 from datetime import datetime
 
 
@@ -129,6 +129,111 @@ def check_driver_hometown_assigned():
             drivers.delete()
     return deleted_drivers
 
+def routeCheck(start, end, day):
+    route_exist_day_dept = start
+    route_exist_day_dest = end
+    route_exist_day_day = day
+    
+    route_exists_results= Route.objects.filter((Q(departureCity=route_exist_day_dept)) | (Q(destinationCity=route_exist_day_dest)) )
+    routes=[]
+    for rt in route_exists_results:
+        routes.append(rt.routeNumber)
+    route_exists_day = Assignment.objects.filter(routeNumber__in=routes, weekDay=route_exist_day_day)
+    if not route_exists_day:
+        return None
+    else:
+        return route_exists_day
+
+def validate_constraint3():
+    assignmentsToRemove = list()
+    drivers = Driver.objects.only('id')
+    uniqueDrivers = []
+    for i in drivers:
+        uniqueDrivers.append(i.id)
+    uniqueDrivers = list(set(uniqueDrivers))
+    for i in uniqueDrivers:
+        print(i)
+        vals = OrderedDict()
+        vals['s'], vals['M'], vals['T'], vals['W'], vals['U'], vals['F'], vals['S'] = [],[],[],[],[],[],[]
+        assignments_results = Assignment.objects(Q(driver_id=i))
+        daysOfTheWeek = {'s':['M','T'],'M':['T','W'],'T':['W','U'],'W':['U','F'],'U':['F','S'],'F':['S','s'],'S':['s','M']}
+        ptr = 0
+        for j in assignments_results:
+            routes = Route.objects(Q(routeNumber=j.routeNumber.id)).order_by('+departureHour','+departureMin')
+            for r in routes:
+               vals[j.weekDay].append(json.loads(r.to_json()))
+
+        for j in vals.keys():
+            if vals[j]:
+                nextTrips = []
+                nextDays = [j]
+                for k in daysOfTheWeek[j]:
+                    nextDays.append(k)
+                    if(vals[k]):
+                        nextTrips.append((vals[k][-1], nextDays))
+                    if nextTrips:
+                        if(vals[j][0]['destinationCity'].strip() != nextTrips[-1][0]['departureCity'].strip()):
+                            removalFlag = True
+                            for k in nextTrips[-1][1]:
+                                trip = routeCheck(vals[j][0]['destinationCity'], nextTrips[-1][0]['departureCity'], k)
+                                if trip:
+
+                                    badRouteFlag = False
+                                    start, end = trip[0], trip[len(trip)-1]
+                                    if start.weekDay == j:
+                                        start = json.loads(Route.objects(Q(routeNumber=start.routeNumber.id)).to_json())[0]
+                                        sTime = datetime.strptime(str(start['departureHour']) +':'+str(start['departureMin']),'%H:%M')
+                                        eTimeH = vals[j][0]['departureHour'] + vals[j][0]['travelTimeHour']
+                                        eTimeM = vals[j][0]['departureMin'] + vals[j][0]['travelTimeMin']
+                                        if(eTimeM >= 60):
+                                            eTimeH+= 1
+                                            eTimeM -=60
+                                        if(eTimeH >= 24):
+                                            badRouteFlag = True
+                                            break
+                                        eTimeH = str(eTimeH)
+                                        eTimeM = str(eTimeM)
+                                        eTime = str(eTimeH) + ':' +str(eTimeM)
+                                        eTime = datetime.strptime(eTime,'%H:%M')
+                                        if(sTime > eTime):
+                                            badRouteFlag = True
+                                            break
+                                        pprint.pprint(sTime)
+                                    if end.weekDay == nextDays[-1]:
+                                        end = json.loads(Route.objects(Q(routeNumber=end.routeNumber.id)).to_json())[0]
+                                        sTime = datetime.strptime(str(nextTrips[-1][0]['departureHour']) +':'+str(nextTrips[-1][0]['departureMin']),'%H:%M')
+                                        eTimeH = end['departureHour'] + end['travelTimeHour']
+                                        eTimeM = end['departureMin'] + end['travelTimeMin']
+                                        if(eTimeM >= 60):
+                                            eTimeH+= 1
+                                            eTimeM -=60
+                                        if(eTimeH >= 24):
+                                            badRouteFlag = True
+                                            break
+                                        eTimeH = str(eTimeH)
+                                        eTimeM = str(eTimeM)
+                                        eTime = str(eTimeH) + ':' +str(eTimeM)
+                                        eTime = datetime.strptime(eTime,'%H:%M')
+                                        if(sTime < eTime):
+                                            badRouteFlag = True
+                                            break
+                                    if not badRouteFlag:
+                                        removalFlag = False
+                                        break
+                            if removalFlag:
+                                assignmentsToRemove.append((i, nextTrips[-1][0]['_id'], nextTrips[0][1][-1]))
+                            else:
+                                break
+                        else:
+                            break
+    
+#        pprint.pprint(vals)
+#    print('The Following Assignments have been deleted for violating constraints')
+#    pprint.pprint(assignmentsToRemove)
+    if(len(assignmentsToRemove) > 0):
+        for i in assignmentsToRemove:
+            Assignment.objects.filter(driver_id=i[0],routeNumber=i[1], weekDay=i[2]).delete()
+        validate_constraint3()
 
 
 @main.errorhandler(404)
@@ -201,6 +306,7 @@ def upload_docs():
                     deleted_driver_list = check_driver_hometown_assigned()
                     print("Following drivers are deleted for not getting assigned a destination route")
                     print(deleted_driver_list)
+            validate_constraint3()
             return redirect(request.url)
     return render_template("index.html")
 
@@ -447,113 +553,4 @@ def route_exist_day_lookup():
     else:
         return render_template('route_exist_day.html', direct_data=route_results1, indirect_data=route_results2 )
 
-def routeCheck(start, end, day):
-    route_exist_day_dept = start
-    route_exist_day_dest = end
-    route_exist_day_day = day
-    
-#    print(route_exist_day_dept+' '+route_exist_day_dest+' '+route_exist_day_day)
-    route_exists_results= Route.objects.filter((Q(departureCity=route_exist_day_dept)) | (Q(destinationCity=route_exist_day_dest)) )
-#    print(jsonify(route_exists_results.to_json()))
-    routes=[]
-    for rt in route_exists_results:
-        routes.append(rt.routeNumber)
-#    print(routes)
-    route_exists_day = Assignment.objects.filter(routeNumber__in=routes, weekDay=route_exist_day_day)
-    if not route_exists_day:
-        return None
-    else:
-        return route_exists_day
 
-@main.route('/validate', methods=['GET'])
-def validate():
-    assignmentsToRemove = list()
-    drivers = Driver.objects.only('id')
-    uniqueDrivers = []
-    for i in drivers:
-        uniqueDrivers.append(i.id)
-    uniqueDrivers = list(set(uniqueDrivers))
-    for i in uniqueDrivers:
-        print(i)
-        vals = OrderedDict()
-        vals['s'], vals['M'], vals['T'], vals['W'], vals['U'], vals['F'], vals['S'] = [],[],[],[],[],[],[]
-        assignments_results = Assignment.objects(Q(driver_id=i))
-        daysOfTheWeek = {'s':['M','T'],'M':['T','W'],'T':['W','U'],'W':['U','F'],'U':['F','S'],'F':['S','s'],'S':['s','M']}
-        ptr = 0
-        for j in assignments_results:
-            routes = Route.objects(Q(routeNumber=j.routeNumber.id)).order_by('+departureHour','+departureMin')
-            for r in routes:
-               vals[j.weekDay].append(json.loads(r.to_json()))
-
-        for j in vals.keys():
-            if vals[j]:
-                nextTrips = []
-                nextDays = [j]
-                for k in daysOfTheWeek[j]:
-                    nextDays.append(k)
-                    if(vals[k]):
-                        nextTrips.append((vals[k][-1], nextDays))
-                    if nextTrips:
-                        if(vals[j][0]['destinationCity'].strip() != nextTrips[-1][0]['departureCity'].strip()):
-                            removalFlag = True
-                            for k in nextTrips[-1][1]:
-                                trip = routeCheck(vals[j][0]['destinationCity'], nextTrips[-1][0]['departureCity'], k)
-                                if trip:
-
-                                    badRouteFlag = False
-                                    start, end = trip[0], trip[len(trip)-1]
-                                    if start.weekDay == j:
-                                        start = json.loads(Route.objects(Q(routeNumber=start.routeNumber.id)).to_json())[0]
-                                        sTime = datetime.strptime(str(start['departureHour']) +':'+str(start['departureMin']),'%H:%M')
-                                        eTimeH = vals[j][0]['departureHour'] + vals[j][0]['travelTimeHour']
-                                        eTimeM = vals[j][0]['departureMin'] + vals[j][0]['travelTimeMin']
-                                        if(eTimeM >= 60):
-                                            eTimeH+= 1
-                                            eTimeM -=60
-                                        if(eTimeH >= 24):
-                                            badRouteFlag = True
-                                            break
-                                        eTimeH = str(eTimeH)
-                                        eTimeM = str(eTimeM)
-                                        eTime = str(eTimeH) + ':' +str(eTimeM)
-                                        eTime = datetime.strptime(eTime,'%H:%M')
-                                        if(sTime > eTime):
-                                            badRouteFlag = True
-                                            break
-                                        pprint.pprint(sTime)
-                                    if end.weekDay == nextDays[-1]:
-                                        end = json.loads(Route.objects(Q(routeNumber=end.routeNumber.id)).to_json())[0]
-                                        sTime = datetime.strptime(str(nextTrips[-1][0]['departureHour']) +':'+str(nextTrips[-1][0]['departureMin']),'%H:%M')
-                                        eTimeH = end['departureHour'] + end['travelTimeHour']
-                                        eTimeM = end['departureMin'] + end['travelTimeMin']
-                                        if(eTimeM >= 60):
-                                            eTimeH+= 1
-                                            eTimeM -=60
-                                        if(eTimeH >= 24):
-                                            badRouteFlag = True
-                                            break
-                                        eTimeH = str(eTimeH)
-                                        eTimeM = str(eTimeM)
-                                        eTime = str(eTimeH) + ':' +str(eTimeM)
-                                        eTime = datetime.strptime(eTime,'%H:%M')
-                                        if(sTime < eTime):
-                                            badRouteFlag = True
-                                            break
-                                    if not badRouteFlag:
-                                        removalFlag = False
-                                        break
-                            if removalFlag:
-#                                pprint.pprint(vals[j][0]['destinationCity'] + ' ' + nextTrips[-1][0]['departureCity'] + ' ' + nextTrips[0][1][0] + ' ' + nextTrips[0][1][-1])
-                                assignmentsToRemove.append((i, nextTrips[-1][0]['_id'], nextTrips[0][1][-1]))
-                            else:
-                                break
-                        else:
-                            break
-    
-#        pprint.pprint(vals)
-    pprint.pprint(assignmentsToRemove)
-#    if(len(assignmentsToRemove) > 0):
-#        for i in assignmentsToRemove:
-#            Assignment.objects.filter(driver_id=i[0],routeNumber=i[1], weekDay=i[2]).delete()
-#        validate()
-    return render_template('base.html', data=assignmentsToRemove)
