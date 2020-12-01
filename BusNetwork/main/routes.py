@@ -24,6 +24,13 @@ main = Blueprint('main', __name__)
 def index():
     return render_template('index.html')
 
+@main.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html')
+
+@main.errorhandler(500)
+def internal_error(error):
+    return render_template('404.html')
 
 @main.route("/upload-docs", methods=["GET", "POST"])
 def upload_docs():
@@ -80,8 +87,8 @@ def upload_docs():
 
 @main.route('/driver_lookup', methods=['POST'])
 def driver_lookup():
-    driver_fn = request.form.get('driver_fn')
-    driver_ln = request.form.get('driver_ln')
+    driver_fn = request.form.get('driver_fn').capitalize()
+    driver_ln = request.form.get('driver_ln').capitalize()
     driver_fulln = driver_fn+ ' '+driver_ln
     print(driver_fulln)
     driver_results= Driver.objects(Q(firstName=driver_fn) & Q(lastName=driver_ln))
@@ -98,7 +105,7 @@ def driver_lookup():
 #    data=json2html.convert(driver_results.to_json())+json2html.convert(test)
     data=json2html.convert(driver_results.to_json())+json2html.convert(test)
     if not driver_results:
-        return jsonify({'error': 'data not found'})
+        return render_template('404.html')
     else:
         return render_template('base.html', data=data)
     #return jsonify(driver_fn)
@@ -106,11 +113,11 @@ def driver_lookup():
 
 @main.route('/city_lookup', methods=['POST'])
 def city_lookup():
-    city_dest = request.form.get('city_lookup')
+    city_dest = request.form.get('city_lookup').capitalize()
     city_results= Route.objects((Q(departureCity=city_dest)) | (Q(destinationCity=city_dest)))
     data=json2html.convert(city_results.to_json())
     if not city_results:
-        return jsonify({'error': 'data not found'})
+        return render_template('404.html')
     else:
        return render_template('base.html', data=data)
 
@@ -118,8 +125,7 @@ def city_lookup():
 @main.route('/route_lookup', methods=['POST'])
 def route_lookup():
     route_exist = request.form.get('route_lookup')
-    route_results=list(mongo.db.assignment.aggregate([{ "$match":{"routeNumber":route_exist}},
-    { "$lookup": {
+    route_results=list(mongo.db.assignment.aggregate([{ "$match":{"routeNumber":route_exist}},{ "$lookup": {
     "localField": "routeNumber",
     "from": "route",
     "foreignField": "_id",
@@ -161,16 +167,16 @@ def route_lookup():
     for document in route_results:
         print(document)
     if not route_results:
-        return jsonify({'error': 'data not found'})
+        return render_template('404.html')
     else:
         return render_template('route.html', route=route_details, data=route_results)
 
-
 @main.route('/route_exist_lookup', methods=['POST'])
 def route_exist_lookup():
-    route_exist_dept = request.form.get('route_exist_dept')
-    route_exist_dest = request.form.get('route_exist_dest')
+    route_exist_dept = request.form.get('route_exist_dept').capitalize()
+    route_exist_dest = request.form.get('route_exist_dest').capitalize()
     route_exists_results= Route.objects(departureCity=route_exist_dept, destinationCity=route_exist_dest )
+    
     route_results=list(mongo.db.route.aggregate([{ "$match":{ "$and":[{"departureCity":route_exist_dept},{"destinationCity":route_exist_dest}]}},
     { "$lookup": {
     "localField": "_id",
@@ -178,12 +184,25 @@ def route_exist_lookup():
     "foreignField": "routeNumber",
     "as": "RouteInfo"
   } },
+  
   {
         "$lookup":{
             "from": "driver", 
-            "localField": "RouteInfo.driver_id", 
-            "foreignField": "_id",
-            "as": "driver_info"
+            "let": { "id": "$Routeinfo.driver_id"},
+
+            "pipeline": [
+              {"$match":
+                    {"$expr":{
+                      "$eq" : ["$id", "$$id"]
+                    }
+                  },
+                  
+                },
+                {
+                  "$project" : {"RouteInfo.weekDay":1, "firstName": 1, "lastName": 1, "_id": 0}
+                }],
+              
+           "as": "driver_info"
         }
     },
     {   
@@ -196,9 +215,10 @@ def route_exist_lookup():
             'departureMin':1,
             'travelTimeHour':1,
             'travelTimeMin':1,
-            '_id':0,
+            #'_id':1,
             'routeNumber' : 1,
             'RouteInfo.weekDay' : 1,
+            'RouteInfo.driver_id' : 1,
             'driver_info.driver_id': 1,
             'driver_info.firstName':1,
             'driver_info.lastName':1,
@@ -208,144 +228,102 @@ def route_exist_lookup():
         } 
     }
   ]))
+    print(route_results)
+    assign_routes = Route.objects.filter(departureCity=route_exist_dept,destinationCity=route_exist_dest)
+    routes=[]
+    for rt in assign_routes:
+        routes.append(rt.id)
+    print(routes)
+	
+    route_results2=list(mongo.db.assignment.aggregate([{ "$match":{ "routeNumber":{"$in":routes}}},{ "$lookup": {
+    "localField": "routeNumber",
+    "from": "route",
+    "foreignField": "_id",
+    "as": "RouteInfo"
+  } },
+  {
+        "$lookup":{
+            "from": "driver", 
+            "localField": "driver_id", 
+            "foreignField": "_id",
+            "as": "driver_info"
+        }
+    },
+    {   
+        "$project":{
+            '_id':0,
+            'routeNumber' : 1,
+            'weekDay' : 1,
+            'driver_info.driver_id': 1,
+            'driver_info.firstName':1,
+            'driver_info.lastName':1,
+            'driver_info.age':1,
+            'driver_info.city':1,
+            'driver_info.state':1
+        } 
+    }
+  ]))
+    print(route_results2)
+ 
     data=(json2html.convert(route_exists_results.to_json()))
     if not route_exists_results:
-        return jsonify({'error': 'data not found'})
+        return render_template('404.html')
     else:
-        return render_template('route_exist.html', data=route_results)
+        return render_template('route_exist.html', data=route_results, routes=route_results2)
 
 @main.route('/route_exist_day_lookup', methods=['POST'])
 def route_exist_day_lookup():
-    route_exist_day_dept = request.form.get('route_exist_day_dept')
-    route_exist_day_dest = request.form.get('route_exist_day_dest')
+    route_exist_day_dept = request.form.get('route_exist_day_dept').capitalize()
+    route_exist_day_dest = request.form.get('route_exist_day_dest').capitalize()
     if not request.form.get('route_exist_day_day'):
         print('no day selected')
         return ('',204)
     else:
         route_exist_day_day = request.form.get('route_exist_day_day')    
     print(route_exist_day_dept+' '+route_exist_day_dest+' '+route_exist_day_day)
-    route_exists_results= Route.objects.filter((Q(departureCity=route_exist_day_dept)) | (Q(destinationCity=route_exist_day_dest)) )#.save()
-    print(jsonify(route_exists_results.to_json()))
-    routes=[]
-    for rt in route_exists_results:
-        routes.append(rt.routeNumber)
-    print(routes)            
-    route_exists_day = Assignment.objects.filter(routeNumber__in=routes, weekDay=route_exist_day_day)
-    data=(json2html.convert(route_exists_day.to_json()))#jsonify(route_exists_day.to_json())
-    if not route_exists_day:
-        return jsonify({'error': 'data not found'})
+    route_exists_direct= Route.objects.filter((Q(departureCity=route_exist_day_dept)) & (Q(destinationCity=route_exist_day_dest)) )#.save()
+    routes_direct=[]
+    for rt in route_exists_direct:
+        routes_direct.append(rt.routeNumber)
+    print(routes_direct)       
+    route_exists_direct_day = Assignment.objects.filter(routeNumber__in=routes_direct, weekDay=route_exist_day_day)
+    route_results1=list(mongo.db.route.find({ "_id":{"$in":routes_direct}},{'_id': True,'routeName': True,'_id': True,'departureCity': True,'departureCode': True,'destinationCity': True,'desinationCode': True,'departureHour':True, 'departureMin': True,'travelTimeHour': True,'travelTimeMin': True}))
+    data_direct=(json2html.convert(route_exists_direct_day.to_json()))
+
+    route_exists_indirect= Route.objects.filter((Q(departureCity=route_exist_day_dept)) | (Q(destinationCity=route_exist_day_dest)) )#.save()
+    routes_indirect=[]
+    for rt in route_exists_indirect:
+        routes_indirect.append(rt.routeNumber)
+    print(routes_indirect)
+    i=[]
+    x=[]
+    for j in route_exists_indirect:
+        if ((j.destinationCity !=route_exist_day_dest) and (j.departureCity ==route_exist_day_dept)):
+            i.append(j.destinationCity)
+            x.append(j.routeNumber)
+    print(i) 
+    o=[]
+    for j in route_exists_indirect:
+        if ((j.departureCity !=route_exist_day_dept) and (j.destinationCity ==route_exist_day_dest)):
+            o.append(j.departureCity)
+            x.append(j.routeNumber)
+    print(o)
+    indirect_routes=[]
+    for z in i: 
+        route_exists_indirect= Route.objects.filter((Q(departureCity=i[0])) & (Q(destinationCity=o[0])) )
+        for k in route_exists_indirect:
+            indirect_routes.append(k.routeNumber)
+            x.append(k.routeNumber)
+    print(indirect_routes)
+    print(x)
+    indir_results=list(mongo.db.routes.find({"routeNumber":{"$in":x}}, {'_id': False,'_cls': False,'driver_id':False}))
+    route_results2=list(mongo.db.route.find({ "_id":{"$in":x}},{'_id': True,'routeName': True,'_id': True,'departureCity': True,'departureCode': True,'destinationCity': True,'desinationCode': True,'departureHour':True, 'departureMin': True,'travelTimeHour': True,'travelTimeMin': True}))
+    print(route_results2)
+    #data_indirect=(json2html.convert(indir_results.to_json()))
+    #routes_indirect=[]
+
+    
+    if not route_exists_direct_day:
+        return render_template('404.html')
     else:
-        return render_template('base.html', data=data)
-
-
-def routeCheck(start, end, day):
-    route_exist_day_dept = start
-    route_exist_day_dest = end
-    route_exist_day_day = day
-    
-#    print(route_exist_day_dept+' '+route_exist_day_dest+' '+route_exist_day_day)
-    route_exists_results= Route.objects.filter((Q(departureCity=route_exist_day_dept)) | (Q(destinationCity=route_exist_day_dest)) )
-#    print(jsonify(route_exists_results.to_json()))
-    routes=[]
-    for rt in route_exists_results:
-        routes.append(rt.routeNumber)
-#    print(routes)
-    route_exists_day = Assignment.objects.filter(routeNumber__in=routes, weekDay=route_exist_day_day)
-    if not route_exists_day:
-        return None
-    else:
-        return route_exists_day
-
-@main.route('/validate', methods=['GET'])
-def validate():
-    assignmentsToRemove = list()
-    drivers = Driver.objects.only('id')
-    uniqueDrivers = []
-    for i in drivers:
-        uniqueDrivers.append(i.id)
-    uniqueDrivers = list(set(uniqueDrivers))
-    for i in uniqueDrivers:
-        print(i)
-        vals = OrderedDict()
-        vals['s'], vals['M'], vals['T'], vals['W'], vals['U'], vals['F'], vals['S'] = [],[],[],[],[],[],[]
-        assignments_results = Assignment.objects(Q(driver_id=i))
-        daysOfTheWeek = {'s':['M','T'],'M':['T','W'],'T':['W','U'],'W':['U','F'],'U':['F','S'],'F':['S','s'],'S':['s','M']}
-        ptr = 0
-        for j in assignments_results:
-            routes = Route.objects(Q(routeNumber=j.routeNumber.id)).order_by('+departureHour','+departureMin')
-            for r in routes:
-               vals[j.weekDay].append(json.loads(r.to_json()))
-
-        for j in vals.keys():
-            if vals[j]:
-                nextTrips = []
-                nextDays = [j]
-                for k in daysOfTheWeek[j]:
-                    nextDays.append(k)
-                    if(vals[k]):
-                        nextTrips.append((vals[k][-1], nextDays))
-                    if nextTrips:
-                        if(vals[j][0]['destinationCity'].strip() != nextTrips[-1][0]['departureCity'].strip()):
-                            removalFlag = True
-                            for k in nextTrips[-1][1]:
-                                trip = routeCheck(vals[j][0]['destinationCity'], nextTrips[-1][0]['departureCity'], k)
-                                if trip:
-
-                                    badRouteFlag = False
-                                    start, end = trip[0], trip[len(trip)-1]
-                                    if start.weekDay == j:
-                                        start = json.loads(Route.objects(Q(routeNumber=start.routeNumber.id)).to_json())[0]
-                                        sTime = datetime.strptime(str(start['departureHour']) +':'+str(start['departureMin']),'%H:%M')
-                                        eTimeH = vals[j][0]['departureHour'] + vals[j][0]['travelTimeHour']
-                                        eTimeM = vals[j][0]['departureMin'] + vals[j][0]['travelTimeMin']
-                                        if(eTimeM >= 60):
-                                            eTimeH+= 1
-                                            eTimeM -=60
-                                        if(eTimeH >= 24):
-                                            badRouteFlag = True
-                                            break
-                                        eTimeH = str(eTimeH)
-                                        eTimeM = str(eTimeM)
-                                        eTime = str(eTimeH) + ':' +str(eTimeM)
-                                        eTime = datetime.strptime(eTime,'%H:%M')
-                                        if(sTime > eTime):
-                                            badRouteFlag = True
-                                            break
-                                        pprint.pprint(sTime)
-                                    if end.weekDay == nextDays[-1]:
-                                        end = json.loads(Route.objects(Q(routeNumber=end.routeNumber.id)).to_json())[0]
-                                        sTime = datetime.strptime(str(nextTrips[-1][0]['departureHour']) +':'+str(nextTrips[-1][0]['departureMin']),'%H:%M')
-                                        eTimeH = end['departureHour'] + end['travelTimeHour']
-                                        eTimeM = end['departureMin'] + end['travelTimeMin']
-                                        if(eTimeM >= 60):
-                                            eTimeH+= 1
-                                            eTimeM -=60
-                                        if(eTimeH >= 24):
-                                            badRouteFlag = True
-                                            break
-                                        eTimeH = str(eTimeH)
-                                        eTimeM = str(eTimeM)
-                                        eTime = str(eTimeH) + ':' +str(eTimeM)
-                                        eTime = datetime.strptime(eTime,'%H:%M')
-                                        if(sTime < eTime):
-                                            badRouteFlag = True
-                                            break
-                                    if not badRouteFlag:
-                                        removalFlag = False
-                                        break
-                            if removalFlag:
-#                                pprint.pprint(vals[j][0]['destinationCity'] + ' ' + nextTrips[-1][0]['departureCity'] + ' ' + nextTrips[0][1][0] + ' ' + nextTrips[0][1][-1])
-                                assignmentsToRemove.append((i, nextTrips[-1][0]['_id'], nextTrips[0][1][-1]))
-                            else:
-                                break
-                        else:
-                            break
-    
-#        pprint.pprint(vals)
-    pprint.pprint(assignmentsToRemove)
-#    if(len(assignmentsToRemove) > 0):
-#        for i in assignmentsToRemove:
-#            Assignment.objects.filter(driver_id=i[0],routeNumber=i[1], weekDay=i[2]).delete()
-#        validate()
-    return render_template('base.html', data=assignmentsToRemove)
-    
+        return render_template('route_exist_day.html', direct_data=route_results1, indirect_data=route_results2 )
