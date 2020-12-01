@@ -19,18 +19,23 @@
   <div class="section no-pad-bot" id="index-banner">
         <div class="container">
         <br><br>
-        <h1 class="header center orange-text">Query 4- Route Exists</h1>
+        <h1 class="header center orange-text">Query 5- Connecting Routes</h1>
         <title>{% block title %}{% endblock %} - Flaskr</title>
             {% block content %}
-             
-             <table class="striped">
-                 <thead>
-                  <tr>
+            <!--{{indirect_data}}
+            <div>{{direct_data|safe}}</div>
+             {% for r in route %}
+                        <h4 class="header center orange-text">Route {{ r['_id'] }}&nbsp; {{ r['routeName'] }}&nbsp;from {{ r['departureCity'] }},&nbsp;{{ r['departureCode'] }} to  {{ r['destinationCity'] }},&nbsp;{{ r['desinationCode'] }}&nbsp;({{ r['routeType'] }}),&nbsp; leaves at {{ r['departureHour'] }}:{{ r['departureMin'] }},&nbsp;and takes  {{ r['travelTimeHour'] }} hours and {{ r['travelTimeMin'] }} minutes to reach destination</h4>
+              {% endfor %}-->
+
+            
+            <h4>Direct Routes</h4>
+            <table class="striped">
+            <tr>
                   <th>routeNumber</th>  
                       <th>routeName</th>
                       <th>departureCity</th>
                       <th>destinationCity</th>
-                      <th>routeType</th>
                       <th>departureHour</th>
                       <th>departureMin</th>
                       <th>travelTimeHour</th>
@@ -38,47 +43,55 @@
                       
                       
                   </tr>
-                </thead>
-                {% for q in data %}
+
+            {% for q in direct_data %}
+                  
+            
                   <tr>
                   <td>{{ q['_id'] }} </td>
                     <td>{{ q['routeName'] }} </td>
                     <td>{{ q['departureCity'] }} </td>
                     <td>{{ q['destinationCity'] }} </td>
-                    <td>{{ q['routeType'] }} </td>
+                    
                     <td>{{ q['departureHour'] }} </td>
                     <td>{{ q['departureMin'] }} </td>
                     <td>{{ q['travelTimeHour'] }} </td>
                     <td>{{ q['travelTimeMin'] }} </td>
-                {% endfor %}     
+                {% endfor %} 
+            </table>
+
+           
+            <h4>Indirect Routes</h4>
+            <table class="striped">
+            <tr>
+                  <th>routeNumber</th>  
+                      <th>routeName</th>
+                      <th>departureCity</th>
+                      <th>destinationCity</th>
+                      <th>departureHour</th>
+                      <th>departureMin</th>
+                      <th>travelTimeHour</th>
+                      <th>travelTimeMin</th>
+                      
+                      
+                  </tr>
+
+            {% for q in indirect_data %}
                   
-                  </tr>
-               <table>
-
-              <table class="striped">
-                 <thead>
+                  
                   <tr>
-                      <th>Route Number</th>
-                      <th>Day of the Week</th>
-                      <th>Driver Details</th>
-                  </tr>
-                </thead>
-                {% for q in routes %}
-                  <tr>
-                  <td>{{ q['routeNumber'] }} </td>
-                    <td>{{ q['weekDay'] }} </td>
-                    <!--<td>{{ q['RouteInfo'] }} </td>-->
-                    {% for r in q['driver_info'] %}
-                      <td>{{ r['firstName'] }}&nbsp;{{ r['lastName'] }}, {{ r['age'] }}&nbsp;from {{ r['city'] }},&nbsp;{{ r['state'] }}</td>
-
-                    {% endfor %}
-                  </tr>
-                {% endfor %}
-              <table>
-              
+                  <td>{{ q['_id'] }} </td>
+                    <td>{{ q['routeName'] }} </td>
+                    <td>{{ q['departureCity'] }} </td>
+                    <td>{{ q['destinationCity'] }} </td>
+                  
+                    <td>{{ q['departureHour'] }} </td>
+                    <td>{{ q['departureMin'] }} </td>
+                    <td>{{ q['travelTimeHour'] }} </td>
+                    <td>{{ q['travelTimeMin'] }} </td>
+                {% endfor %} 
+            </table>
             {% endblock %}
-
-            
         
         </div>
    </div> 
