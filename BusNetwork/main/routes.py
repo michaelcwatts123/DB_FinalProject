@@ -12,8 +12,8 @@ from json2html import *
 
 
 app = Flask(__name__)
-#app.config["MONGO_URI"] = 'mongodb+srv://admin:FyJKue16fzF5et8v@cluster0.bbd6r.mongodb.net/BusNetwork?retryWrites=true&w=majority'
-app.config["MONGO_URI"] = 'mongodb+srv://project_user:7330@busnetwork.nwlcz.mongodb.net/BusNetwork?retryWrites=true&w=majority'
+app.config["MONGO_URI"] = 'mongodb+srv://admin:FyJKue16fzF5et8v@cluster0.bbd6r.mongodb.net/BusNetwork?retryWrites=true&w=majority'
+#app.config["MONGO_URI"] = 'mongodb+srv://project_user:7330@busnetwork.nwlcz.mongodb.net/BusNetwork?retryWrites=true&w=majority'
 mongo = PyMongo(app)
 app.config["FILE_UPLOADS1"] = './BusNetwork/static/uploads/driver'
 app.config["FILE_UPLOADS2"] = './BusNetwork/static/uploads/routes'
@@ -26,15 +26,12 @@ def index():
 
 def validate_driver(obj):
     if not obj:
-        print("No driver object to be validated")
         return False
     else:
         route_set = Route.objects(destinationCity=obj.city)
         if not route_set:
-            print("No routes with the destination city as the Driver's hometown")
             return False
         else:
-            print("Driver can be hired")
             return True
 
 
@@ -46,55 +43,68 @@ def validate_assignment(obj):
     else:
         check_driver_dest = False
         day = ('s', 'M', 'T', 'W', 'U', 'F', 'S')
-        route_assignment = Assignment.objects(driver_id=obj.driver_id)
-        # Check constraints 1 & 2 for driver assignment
-        if not route_assignment:
-            print("No previous routes assigned.  Proceed with assignment")
-            return True
-        for r in route_assignment:
-            existing_route = Route.objects.get(routeNumber = r.routeNumber.id)
-            potential_route = Route.objects.get(routeNumber = obj.routeNumber.id)
-            existing_driver_detail = Driver.objects.get(id = r.driver_id.id)
-            potential_driver_detail = Driver.objects.get(id = obj.driver_id.id)
-            rest_time = (existing_route.travelTimeHour*60 + existing_route.travelTimeMin)/2
-            potential_departure = potential_route.departureHour*60 + potential_route.departureMin
-            potential_arrival = potential_departure + potential_route.travelTimeHour*60 + potential_route.travelTimeMin
-            potential_rest = (potential_route.travelTimeHour*60 + potential_route.travelTimeMin)/2  
-            existing_departure = existing_route.departureHour*60 + existing_route.departureMin     
-            existing_arrival = existing_departure + existing_route.travelTimeHour*60 + existing_route.travelTimeMin  
-            if potential_driver_detail.city == potential_route.destinationCity:
-                potential_rest = max(potential_rest, 18*60)
-            if existing_route.destinationCity == potential_driver_detail.city:
-                rest_time = max(rest_time, 18*60)
-            old_route_end_day = day.index(r.weekDay)
-            old_route_end_total = existing_route.departureHour*60 + existing_route.departureMin + existing_route.travelTimeHour*60 + existing_route.travelTimeMin + rest_time
-            if old_route_end_total >= 1440:
-                old_route_end_time = old_route_end_total % 1440 
-                old_route_end_day += old_route_end_total//1440
-            if old_route_end_day < day.index(obj.weekDay):
-                print("No issues with this route")
-                print(r.to_json())
+        try:
+            route_assignment = Assignment.objects(driver_id=obj.driver_id)
+            # Check if new route has to be assigned
+            if not route_assignment:
                 return True
-            elif old_route_end_day == day.index(obj.weekDay):
-                if potential_departure <= existing_arrival + rest_time:
-                    print("Route cannot be assigned before existing route ends")
-                    return False
-                print("Route assignment without collision possible")
-                return True
-            elif old_route_end_day > day.index(obj.weekDay):
-                print ("New route cannot be assigned before old route assignment ends")
+            if(Assignment.objects(Q(driver_id=obj.driver_id)&Q(routeNumber=obj.routeNumber)&Q(weekDay=obj.weekDay))):
+                print("Assignment already exists",obj.driver_id.id)
                 return False
-            elif day.index(r.weekDay) > day.index(obj.weekDay):
-                potential_route_end_total = potential_arrival + potential_rest
-                if potential_route_end_total >= 1440:
-                    potential_route_end_time = potential_route_end_total%1440
-                    potential_route_end_day = day.index(r.weekDay) + potential_route_end_total//1440
-                if potential_route_end_day == day.index(r.weekDay):
-                    if potential_route_end_time >= existing_departure:
-                        print("The new assignment will not end before the departure of an existing route")
+            # Validation check if existing route assignments or the potential assignment interferes with constraints
+            for r in route_assignment:
+                existing_route = Route.objects.get(routeNumber = r.routeNumber.id)
+                potential_route = Route.objects.get(routeNumber = obj.routeNumber.id)
+                if potential_route.routeType == '1':
+                    if obj.weekDay=='s' or obj.weekDay=='S':
+                        print("Route assignment weekDay = "+obj.weekDay+"inconsistent with Route Type: "+potential_route.routeType)
                         return False
-                print("New route can be assigned without any collision")
-                return True
+                elif potential_route.routeType == '2':
+                    if 0 < day.index(obj.weekDay) < 6:
+                        print("Route assignment weekDay inconsistent with Route Type")
+                        return False
+                existing_driver_detail = Driver.objects.get(id = r.driver_id.id)
+                potential_driver_detail = Driver.objects.get(id = obj.driver_id.id)
+                # Converting the times to minutes starting from 0 and ending at 1440 (24*60) minutes for the day
+                rest_time = (existing_route.travelTimeHour*60 + existing_route.travelTimeMin)/2
+                potential_departure = potential_route.departureHour*60 + potential_route.departureMin
+                potential_arrival = potential_departure + potential_route.travelTimeHour*60 + potential_route.travelTimeMin
+                potential_rest = (potential_route.travelTimeHour*60 + potential_route.travelTimeMin)/2  
+                existing_departure = existing_route.departureHour*60 + existing_route.departureMin     
+                existing_arrival = existing_departure + existing_route.travelTimeHour*60 + existing_route.travelTimeMin  
+                if potential_driver_detail.city == potential_route.destinationCity:
+                    potential_rest = max(potential_rest, 18*60)
+                if existing_route.destinationCity == potential_driver_detail.city:
+                    rest_time = max(rest_time, 18*60)
+                old_route_end_day = day.index(r.weekDay)
+                old_route_end_total = existing_route.departureHour*60 + existing_route.departureMin + existing_route.travelTimeHour*60 + existing_route.travelTimeMin + rest_time
+                if old_route_end_total >= 1440:
+                    old_route_end_time = old_route_end_total % 1440 
+                    old_route_end_day += old_route_end_total//1440
+                if old_route_end_day < day.index(obj.weekDay):
+                    return True
+                elif old_route_end_day == day.index(obj.weekDay):
+                    if potential_departure <= existing_arrival + rest_time:
+                        print("New route "+potential_route.routeNumber+ " cannot be assigned before existing route "+existing_route.routeNumber+ " ends")
+                        return False
+                    print("Route assignment without collision possible")
+                    return True
+                elif old_route_end_day > day.index(obj.weekDay):
+                    print("New route "+potential_route.routeNumber+ " cannot be assigned before existing route "+existing_route.routeNumber+ " ends")
+                    return False
+                elif day.index(r.weekDay) > day.index(obj.weekDay):
+                    potential_route_end_total = potential_arrival + potential_rest
+                    if potential_route_end_total >= 1440:
+                        potential_route_end_time = potential_route_end_total%1440
+                        potential_route_end_day = day.index(r.weekDay) + potential_route_end_total//1440
+                    if potential_route_end_day == day.index(r.weekDay):
+                        if potential_route_end_time >= existing_departure:
+                            print("The new route "+potential_route.routeNumber+ "  will not end before the departure of existing route " + existing_route.routeNumber)
+                            return False
+                    return True
+        except Exception as e:
+            print(e)
+            return False
 
 def check_driver_hometown_assigned():
     deleted_drivers = []
@@ -106,12 +116,11 @@ def check_driver_hometown_assigned():
         route_assignments = Assignment.objects(driver_id=drivers.id)
         if not route_assignments:
             print("No route assignments for the particular driver")
-            exit
+            continue
         for route in route_assignments:
             assigned_route = Route.objects.get(routeNumber=route.routeNumber.id)
             if assigned_route.destinationCity == drivers.city:
-                check_dest = True
-            
+                check_dest = True          
         if not check_dest:
             deleted_drivers.append(drivers.id)
             Assignment.objects(driver_id=drivers.id).delete()
@@ -145,10 +154,8 @@ def upload_docs():
                                 print(x.id)
                                 #driver_collection.insert(json.dumps(x))
                                 if validate_driver(x):
-                                    print("Driver validated")
                                     Driver.save(x)
                                 else:
-                                    print("Driver cannot be hired")
                                     continue
                         #driver_collection.save(Driver())
                     
@@ -170,14 +177,15 @@ def upload_docs():
                             #data = f.read()
                             csv_row=[row for row in csv.reader(f.read().splitlines())]
                             for csv_row in csv_row:
+                                if not Driver.objects(Q(id=csv_row[0])):
+                                    continue
+                                if not Route.objects(Q(routeNumber=csv_row[1])):
+                                    continue
                                 z=Assignment(driver_id=csv_row[0],routeNumber=csv_row[1],weekDay=csv_row[2])
-                                print(z.weekDay)
                                 #driver_collection.insert(json.dumps(x))
                                 if validate_assignment(z):
-                                    print("Driver Assignment Validated")
                                     Assignment.save(z)
                                 else:
-                                    print("Driver Assignment not possible")
                                     continue
                     deleted_driver_list = check_driver_hometown_assigned()
                     print("Following drivers are deleted for not getting assigned a destination route")
