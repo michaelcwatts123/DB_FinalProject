@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+  <title>CS7330</title>
+
+  <!-- CSS  -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="static/materialize.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="static/style.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+</head>
+<body>
+  <nav class="light-blue lighten-1" role="navigation">
+    <div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo">CS7330</a>
+      
+    </div>
+  </nav>
+  <div class="section no-pad-bot" id="index-banner">
+    <div class="container">
+      <br><br>
+      <h1 class="header center orange-text">Group 10 Bus Network</h1>
+      
+      
+
+      <form action="/upload-docs" method="POST" enctype="multipart/form-data">
+        <div class="file-field input-field">
+          <div class="btn orange darken-1">
+            <span>File</span>
+            <input name ="files" id="files" type="file" multiple>
+          </div>
+          <div class="file-path-wrapper">
+            <input class="file-path validate" type="text" placeholder="Upload one or more files">
+          </div>
+        </div>
+        <div class="row center col s4">
+         <button type="submit"><a id="download-button" class="btn-large waves-effect waves-light orange">Import</a></button> 
+        </div>
+      </form>
+      
+      <div class="row center">
+        <div class="row">
+            <div class="col s12">
+              <ul class="tabs">
+                <li class="tab col s2"><a href="#driver">Query 1</a></li>
+                <li class="tab col s2"><a href="#city">Query 2</a></li>
+                <li class="tab col s2"><a href="#route">Query 3</a></li>
+                <li class="tab col s2"><a href="#route_exist">Query 4</a></li>
+                <li class="tab col s2"><a href="#route_exist_day">Query 5</a></li>
+
+              </ul>
+            </div>
+            <div id="driver" class="col s12"><br><br>
+              <div class="row">
+                <form name="dr" action="{{ url_for('main.driver_lookup')}}" method="POST" class="col s12">
+                  <div class="row">
+                    <div class="input-field col s6">
+                      <input name="driver_fn" id="icon_fn" type="text" class="validate">
+                      <label for="icon_fn">First Name</label>
+                    </div>
+                    <div class="input-field col s6">
+                      <input name="driver_ln" id="icon_ln" type="tel" class="validate">
+                      <label for="icon_ln">Last Name</label>
+                    </div>
+                  </div>
+                  <button id=process_driver class="btn waves-effect orange darken-1" type="submit" onclick="myfunc()" >Submit
+                    <i class="material-icons right">send</i>
+                  </button>
+                  
+                </form>
+              </div>
+            </div>
+            <div id="city" class="col s12">
+              <br><br>
+              <div class="row">
+                <form action="{{ url_for('main.city_lookup')}}" method="POST" class="col s12" >
+                  <div class="row">
+                    <div class="input-field col s12">
+                      <input name="city_lookup" id="city_lookup" type="text" class="validate">
+                      <label for="icon_city">City</label>
+                    </div>
+                   
+                  </div>
+                  <button class="btn waves-effect orange darken-1" type="submit" onclick="myfunc1()" name="action">Submit
+                    <i class="material-icons right">send</i>
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div id="route" class="col s12">
+              <br><br>
+              <div class="row">
+                <form action="{{ url_for('main.route_lookup')}}" method="POST" class="col s12">
+                  <div class="row">
+                    <div class="input-field col s12">
+                      <input name="route_lookup" id="icon_route" type="text" class="validate">
+                      <label for="icon_route">Route</label>
+                    </div>
+                   
+                  </div>
+                  <button class="btn waves-effect orange darken-1" type="submit" name="action">Submit
+                    <i class="material-icons right">send</i>
+                  </button>
+                </form>
+              </div>
+          </div>
+            <div id="route_exist" class="col s12">
+              <br><br>
+              <div class="row">
+                <form action="{{ url_for('main.route_exist_lookup')}}" method="POST" class="col s12">
+                  <div class="row">
+                    <div class="input-field col s6">
+                      <i class="material-icons prefix">add_location</i>
+                      <input name="route_exist_dept" id="icon_dept1" type="text" class="validate">
+                      <label for="icon_dept1">Departure</label>
+                    </div>
+                    <div class="input-field col s6">
+                      <i class="material-icons prefix">add_location</i>
+                      <input name="route_exist_dest" id="icon_dest1" type="tel" class="validate">
+                      <label for="icon_dest1">Destination</label>
+                    </div>
+                  </div>
+                  <button class="btn waves-effect orange darken-1" type="submit" name="action">Submit
+                    <i class="material-icons right">send</i>
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div id="route_exist_day" class="col s12"><br><br>
+              <div class="row">
+                <form action="{{ url_for('main.route_exist_day_lookup')}}" method="POST" class="col s12">
+                  <div class="row">
+                    <div class="input-field col s4">
+                      <i class="material-icons prefix">add_location</i>
+                      <input name="route_exist_day_dept" id="icon_dept" type="text" class="validate">
+                      <label for="icon_dept">Departure</label>
+                    </div>
+                    <div class="input-field col s4">
+                      <i class="material-icons prefix">add_location</i>
+                      <input name="route_exist_day_dest" id="icon_dest" type="tel" class="validate">
+                      <label for="icon_dest">Destination</label>
+                    </div>
+                    
+                    <div class="input-field col s4">
+                      <select name="route_exist_day_day">
+                        <option value="" disabled selected></option>
+                        <option value="s">Sunday</option>
+                        <option value="M">Monday</option>
+                        <option value="T">Tuesday</option>
+                        <option value="W">Wednesday</option>
+                        <option value="U">Thursday</option>
+                        <option value="F">Friday</option>
+                        <option value="S">Saturday</option>
+                      </select>
+                      <label>Day of the week</label>
+                    </div>
+
+                    
+                  </div>
+                  <button class="btn waves-effect orange darken-1" type="submit" name="action">Submit
+                    <i class="material-icons right">send</i>
+                  </button>
+
+                  </form>
+                  
+              </div>
+            </div>
+
+          </div>   
+             
+        </div>
+      <br><br>
+    </div>
+  </div>
+  
+  <footer class="page-footer orange">
+    <div class="container">
+      <div class="row">
+        <div class="col l6 s12">
+          <h5 class="white-text">Group 10</h5>
+          <p class="grey-text text-lighten-4"></p>
+
+
+        </div>
+        
+        
+      </div>
+    </div>
+    <div class="footer-copyright">
+      <div class="container">
+      <a class="orange-text text-lighten-3" href="https://www.smu.edu/Lyle/Academics/Departments/CS">CS7330</a>
+      </div>
+    </div>
+  </footer>
+
+
+  <!--  Scripts-->
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="static/materialize_js.js"></script>
+  <script src="static/init.js"></script>
+  <script>
+      $(document).ready(function(){
+    $('.tabs').tabs();
+  });
+  document.addEventListener('DOMContentLoaded', function() {
+    var elems = document.querySelectorAll('select');
+    var instances = M.FormSelect.init(elems, options);
+  });
+  $(document).ready(function(){
+    $('select').formSelect();
+  });
+  function myFunc() {
+    instance.select('driver');
+    
+                    }
+  function myFunc1() {
+    instance.select('city');
+                    }
+  
+  </script>
+  </body>
+</html>

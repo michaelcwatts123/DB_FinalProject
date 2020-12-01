@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+  body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+
+  main {
+    flex: 1 0 auto;
+  }</style>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+  <title>CS7330</title>
+
+  <!-- CSS  -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="static/materialize.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="static/style.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+</head>
+<body>
+  <nav class="light-blue lighten-1" role="navigation">
+    <div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo">CS7330</a>
+      
+    </div>
+  </nav>
+  <div class="section no-pad-bot" id="index-banner">
+        <div class="container">
+        <br><br>
+        <h1 class="header center orange-text">Query 3- Route Details</h1>
+        <title>{% block title %}{% endblock %} - Flaskr</title>
+            {% block content %}
+             
+             
+             <!--<div>{{route|safe}}</div>-->
+             {% for r in route %}
+                        <h4 class="header center orange-text">Route {{ r['_id'] }}&nbsp; {{ r['routeName'] }}&nbsp;from {{ r['departureCity'] }},&nbsp;{{ r['departureCode'] }} to  {{ r['destinationCity'] }},&nbsp;{{ r['desinationCode'] }}&nbsp;({{ r['routeType'] }}),&nbsp; leaves at {{ r['departureHour'] }}:{{ r['departureMin'] }},&nbsp;and takes  {{ r['travelTimeHour'] }} hours and {{ r['travelTimeMin'] }} minutes to reach destination</h4>
+              {% endfor %}
+              <table class="striped">
+                 <thead>
+                  <tr>
+                      <th>Day of the Week</th>
+                      <th>Driver Details</th>
+                  </tr>
+                </thead>
+                {% for q in data %}
+                  <tr>
+                    <td>{{ q['weekDay'] }} </td>
+                    <!--<td>{{ q['RouteInfo'] }} </td>-->
+                    {% for r in q['driver_info'] %}
+                      <td>{{ r['firstName'] }}&nbsp;{{ r['lastName'] }}, {{ r['age'] }}&nbsp;from {{ r['city'] }},&nbsp;{{ r['state'] }}</td>
+
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              <table>
+            {% endblock %}
+
+            
+        
+        </div>
+   
+  
+  <footer class="page-footer orange">
+    <div class="container">
+      <div class="row">
+        <div class="col l6 s12">
+          <h5 class="white-text" href="/"><a href="/">Back to Querying</a></h5>
+          <p class="grey-text text-lighten-4"></p>
+
+
+        </div>
+        
+        
+      </div>
+    </div>
+    <div class="footer-copyright">
+      <div class="container">
+      <a class="orange-text text-lighten-3" href="https://www.smu.edu/Lyle/Academics/Departments/CS">CS7330</a>
+      </div>
+    </div>
+  </footer>
+</div> 
+
+  <!--  Scripts-->
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="static/materialize_js.js"></script>
+  <script src="static/init.js"></script>
+  <script>
+  
+  </script>
+  </body>
+</html>
