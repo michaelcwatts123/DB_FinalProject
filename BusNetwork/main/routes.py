@@ -332,7 +332,7 @@ def routeCheck(start, end, day):
     route_exist_day_dept = start
     route_exist_day_dest = end
     route_exist_day_day = day
-
+    
 #    print(route_exist_day_dept+' '+route_exist_day_dest+' '+route_exist_day_day)
     route_exists_results= Route.objects.filter((Q(departureCity=route_exist_day_dept)) | (Q(destinationCity=route_exist_day_dest)) )
 #    print(jsonify(route_exists_results.to_json()))
@@ -430,9 +430,11 @@ def validate():
                                 break
                         else:
                             break
-
+    
 #        pprint.pprint(vals)
     pprint.pprint(assignmentsToRemove)
 #    if(len(assignmentsToRemove) > 0):
+#        for i in assignmentsToRemove:
+#            Assignment.objects.filter(driver_id=i[0],routeNumber=i[1], weekDay=i[2]).delete()
 #        validate()
     return render_template('base.html', data=assignmentsToRemove)
