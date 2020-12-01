@@ -143,6 +143,7 @@ def routeCheck(start, end, day):
         return None
     else:
         return route_exists_day
+        
 
 def validate_constraint3():
     assignmentsToRemove = list()
@@ -198,7 +199,7 @@ def validate_constraint3():
                                         if(sTime > eTime):
                                             badRouteFlag = True
                                             break
-                                        pprint.pprint(sTime)
+#                                        pprint.pprint(sTime)
                                     if end.weekDay == nextDays[-1]:
                                         end = json.loads(Route.objects(Q(routeNumber=end.routeNumber.id)).to_json())[0]
                                         sTime = datetime.strptime(str(nextTrips[-1][0]['departureHour']) +':'+str(nextTrips[-1][0]['departureMin']),'%H:%M')
