@@ -339,13 +339,38 @@ def driver_lookup():
 
 @main.route('/city_lookup', methods=['POST'])
 def city_lookup():
+    days = ('s', 'M', 'T', 'W', 'U', 'F', 'S')
     city_dest = request.form.get('city_lookup').capitalize()
-    city_results= Route.objects((Q(departureCity=city_dest)) | (Q(destinationCity=city_dest)))
-    data=json2html.convert(city_results.to_json())
-    if not city_results:
+    departure_results = {}
+    destination_results = {}
+    for day in days:
+        print(day)
+        day_assignment = Assignment.objects(weekDay=day)
+        for a in day_assignment:
+            route_result = Route.objects.get(routeNumber=a.routeNumber.id)
+            print("Route : "+route_result.routeNumber)
+            print("Departure city :"+route_result.departureCity)
+            print(len(route_result.departureCity))
+            print("Destination city :"+route_result.destinationCity)
+            print(len(route_result.destinationCity))
+            print(city_dest)
+            if route_result.departureCity==city_dest:
+                if route_result.routeNumber not in departure_results:
+                    departure_results[route_result.routeNumber]=route_result.departureHour*60+route_result.departureMin
+            elif route_result.destinationCity==city_dest:
+                if route_result.routeNumber not in destination_results:
+                    destination_results[route_result.routeNumber]=route_result.departureHour*60+route_result.departureMin
+    departure_results = sorted(departure_results, key=departure_results.__getitem__)
+    print(departure_results)
+    destination_results = sorted(destination_results, key=destination_results.__getitem__)
+    print(destination_results)
+    dep_city_results = Route.objects(routeNumber__in=departure_results).to_json()
+    dest_city_results = Route.objects(routeNumber__in=destination_results).to_json()
+    data=json2html.convert(dep_city_results) + json2html.convert(dest_city_results)
+    if not departure_results and not destination_results:
         return render_template('404.html')
     else:
-       return render_template('base.html', data=data)
+        return render_template('base.html', data=data)
 
 
 @main.route('/route_lookup', methods=['POST'])
