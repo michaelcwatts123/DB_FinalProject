@@ -4,3 +4,6 @@ A13,,Waco,TX,Dallas,TX,0,20,0,2,45
 4B7,Express,Dallas,TX,Houston,TX,1,15,30,4,30
 B27,Greyhound,Austin,TX,Houston,TX,0,15,30,5,0
 3,Redbus,Waco,TX,GrandPraire,TX,1,7,0,6,25
+99,Sad_express,Dallas,TX,San Antonio,TX,2,15,15,2,25
+100,Route21,Waco,TX,Houston,TX,2,15,15,2,25
+101,Route55,San Antonio,Tx,Waco,TX,2,21,15,2,25
